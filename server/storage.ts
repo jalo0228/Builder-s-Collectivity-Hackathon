@@ -1,38 +1,53 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { profiles, type Profile, type InsertProfile } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getProfiles(): Promise<Profile[]>;
+  searchProfiles(queryEmbedding: number[]): Promise<Profile[]>;
+  createProfile(profile: InsertProfile, embedding: number[]): Promise<Profile>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getProfiles(): Promise<Profile[]> {
+    return await db.select().from(profiles);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async searchProfiles(queryEmbedding: number[]): Promise<Profile[]> {
+    const allProfiles = await db.select().from(profiles);
+    
+    // Compute cosine similarity
+    const dotProduct = (a: number[], b: number[]) => a.reduce((sum, val, i) => sum + val * b[i], 0);
+    const magnitude = (a: number[]) => Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+    const cosineSimilarity = (a: number[], b: number[]) => {
+      const magA = magnitude(a);
+      const magB = magnitude(b);
+      if (magA === 0 || magB === 0) return 0;
+      return dotProduct(a, b) / (magA * magB);
+    };
+
+    const scored = allProfiles.map(p => {
+      let score = 0;
+      if (p.embedding && p.embedding.length === queryEmbedding.length) {
+        score = cosineSimilarity(p.embedding, queryEmbedding);
+      }
+      return { profile: p, score };
+    });
+
+    // Sort by descending score
+    scored.sort((a, b) => b.score - a.score);
+
+    // Return reasonable matches (or just top results)
+    return scored.filter(s => s.score > 0.3).map(s => s.profile).slice(0, 10);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createProfile(profile: InsertProfile, embedding: number[]): Promise<Profile> {
+    const [created] = await db.insert(profiles).values({
+      ...profile,
+      embedding
+    }).returning();
+    return created;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

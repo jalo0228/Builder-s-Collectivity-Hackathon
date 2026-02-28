@@ -1,3 +1,4 @@
+Problem what We wanted to Solve : 
 Tech Stack
 
 Frontend: React + TypeScript (Vite), TailwindCSS, shadcn/ui (Radix), TanStack React Query for API data fetching/caching.

@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: builder_collectivity_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: builder_collectivity
+    ports:
+      - "5432:5432"
+    volumes:
+      - builder_collectivity_pgdata:/var/lib/postgresql/data
+
+volumes:
+  builder_collectivity_pgdata:

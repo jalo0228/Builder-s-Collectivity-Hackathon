@@ -6,6 +6,7 @@ Backend: Node.js + TypeScript + Express. Single dev server runs API + Vite (fron
 Database: PostgreSQL with Drizzle ORM (drizzle-orm, drizzle-kit) for schema + migrations/push.
 Maps: Leaflet / react-leaflet for rendering provider locations on the map.
 Optional AI: Google Gemini embeddings via @google/generative-ai.
+
 How AI Is Used (Search)
 
 Purpose: turn a natural-language query (e.g., “tutor in State College for python”) into an embedding vector, then find the most semantically similar provider profiles.
